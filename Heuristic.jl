@@ -3,28 +3,26 @@ include("parser.jl")
 function find_greedy_solution(filename)
 
     r, c, b, m, t = readfile(filename, 0);
-    Ratio = r;
-    temp = minimum(Ratio)
+    Ratio = c./r;
     current_ressources = zeros(m)
     task_assignation = zeros(t)
 
-    while maximum(Ratio .!= 0.0)
-        #Find the maximum Ratio and the task/workers that maximizes it
-        max = maximum(Ratio)
-        indexes = argmax(Ratio)
-        m_index = indexes[1]
-        t_index = indexes[2]
+    for task in 1:t
 
-        #If the worker can take the task we assign it else we block this task for this worker
-        if current_ressources[m_index] + r[m_index, t_index] <= b[m_index]
-            current_ressources .+= r[m_index, t_index]
-            task_assignation[t_index] = m_index
-            Ratio[:, t_index] .= 0
-        elseif current_ressources[m_index] + r[m_index, t_index] > b[m_index]
-            Ratio[indexes] = 0
+        while task_assignation[task] == 0
+            #Find the maximum Ratio for this task (max over a column in Ratio)
+            indexes = argmax(Ratio[:, task])
+            m_index = indexes[1]
+            t_index = task
+
+            #If the max is on a worker that can take the task we assign it
+            if current_ressources[m_index] + r[m_index, t_index] <= b[m_index]
+                task_assignation[task] = m_index
+                current_ressources[m_index] += r[m_index, t_index]
+            else
+                Ratio[m_index, task] = 0
+            end
         end
-        print
-        println(Ratio[:, 1])
 
     end
 

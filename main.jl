@@ -1,5 +1,5 @@
 function main()
-    println("bite")
+    println("le git marche")
     return 1
 end
 
