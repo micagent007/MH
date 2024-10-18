@@ -16,6 +16,7 @@ function readfile(fname, id)    #id=le numÃ©ro d'instance, de 0 Ã  nbInst-1
     r = all[deb+m+1:deb+2m,1:t];
     b = all[deb+2m+1,      1:m];
     return r, c, b, m, t;
+
 end
 
 #Attention: cette lecture ne fonctionne pas si le ficher n'est pas alignÃ© sous format matriciel
