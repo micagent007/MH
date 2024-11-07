@@ -1,0 +1,18 @@
+# Voisinages
+
+""" Penser à évaluer la taille des voisinages dans le rapport """
+
+1. Assigner une tâche à un nouvel agent
+
+2. Swap tâches entre deux agents
+
+    V1 : un agent échange une tâche avec un autre agent
+    V2 : un agent échange deux tâches avec un autre agent
+
+    Vi : deux agents échangent i tâches
+
+3. Swap tâches entre plus de deux agents:
+    V1 : deux agent échangent une tâche
+    V2 : permutation de tâches entre les agents
+
+    Vi : permutation de tâches entre i+1 agents
