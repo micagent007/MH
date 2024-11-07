@@ -1,4 +1,5 @@
 include("parser.jl")
+include("Neighbours.jl")
 
 function cost(task_assignation, filename, id)
     r, c, b, m, t = readfile(filename, id);
@@ -70,13 +71,17 @@ function find_least_ressources(filename, id)
     return task_assignation;
 end
 
-id = 2
+id = 1
 filename = "Instances/gap1.txt"
 
 T = find_least_ressources(filename, id)
 println(T)
+println(is_feasible(T, filename, id))
+println(cost(T, filename, id))
 #println(cost(T, filename, id))
 
 T = find_greedy_solution(filename, id)
 println(T)
+println(is_feasible(T, filename, id))
+println(cost(T, filename, id))
 #println(cost(T, filename, id))
