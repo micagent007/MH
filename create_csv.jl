@@ -92,3 +92,28 @@ function create_csv_tabu(folder="Instances/")
     end
     CSV.write("output_csv_tabu", df)
 end
+
+function create_csv_genetic(folder="Instances/")
+    files = readdir(folder)
+    df = DataFrame(id = Int[], file = String[], instance = Int[], genetic_solution = []) # Ajouter les heuristiques à comparer
+    id = 0
+
+    for file in files
+        path = folder*file # Ajuster le path
+        nb_instances = parse(Int, readline(path))
+        for instance in 0:nb_instances-1
+
+            gap = GAP(path, instance, true)
+            population_size = 20
+            num_generations = 50
+            mutation_rate = 0.1
+            
+            best_solution, best_cost = genetic_algorithm(gap, population_size, num_generations, mutation_rate)
+
+            push!(df, (id, path, instance, best_cost)) # Ajouter les heuristiques à comparer
+            println(id)
+            id += 1
+        end
+    end
+    CSV.write("output_csv_genetic", df)
+end
