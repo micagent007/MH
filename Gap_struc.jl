@@ -57,7 +57,6 @@ function is_feasible(gap::GAP, task_assignation = gap.task_assignation)
         worker = task_assignation[task]
         # Vérifie si l'assignation est complète
         if worker < 1 || worker > gap.m
-            println("worker :", worker)
             return false
         end
         ressources_used[worker] += gap.r[worker, task]
@@ -66,7 +65,6 @@ function is_feasible(gap::GAP, task_assignation = gap.task_assignation)
     for worker in 1:gap.m
         # Vérifie si l'assignation respecte les contraintes de ressources
         if ressources_used[worker] > gap.b[worker]
-            println("worker :", worker, "max :", gap.b[worker], "valeur :", ressources_used[worker])
             return false
         end
     end
@@ -243,8 +241,8 @@ function recuit(gap, mu, T0, iter_max)
 
     count = 0
 
-    x_max = deepcopy(gap)
-    x = deepcopy(gap)
+    x_max = deepcopy(gap) # Meilleure solution
+    x = deepcopy(gap) # Solution courante
     T = T0
 
     while T > 1
@@ -256,13 +254,11 @@ function recuit(gap, mu, T0, iter_max)
             end
             x_p = deepcopy(x)
             x_p.task_assignation = swap_tasks!(x, i, j)
-            
             if is_feasible(x_p)
                 delta = cost(x_p) - cost(x)
-                if delta > 0 # Maximisation (< 0 pour une minimisation)
-                    println("better")
+                if delta > 0 # Maximisation (< 0 pour une minimisation) -> améliore la solution courante
                     x = deepcopy(x_p)
-                    if cost(x) > cost(x_max)
+                    if cost(x) > cost(x_max) # Améliore la solution optimale
                         print("better")
                         x_max = deepcopy(x)
                     end
