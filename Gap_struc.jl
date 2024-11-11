@@ -8,12 +8,13 @@ struct GAP
     m::Int          # Nombre d'agents
     t::Int          # Nombre de tâches
     task_assignation::Vector{Int}  # Assignation des tâches (solution courante)
+    is_maximisation::Bool
 
     # Constructeur personnalisé pour charger les données à partir d'un fichier
-    function GAP(filename::String, id::Int)
+    function GAP(filename::String, id::Int, is_maximization::Bool)
         r, c, b, m, t = readfile(filename, id)
         task_assignation = zeros(Int, t)
-        new(r, c, b, m, t, task_assignation)
+        new(r, c, b, m, t, task_assignation, is_maximization)
     end
 end
 
@@ -21,6 +22,10 @@ end
 function cost(gap::GAP)
     total_cost = 0
     for task in 1:gap.t
+        if gap.task_assignation[task] == 0
+            println("solution non admissible")
+            return 0
+        end
         total_cost += gap.c[gap.task_assignation[task], task]
     end
     return total_cost
@@ -49,7 +54,7 @@ end
 
 # Heuristique de solution gloutonne
 function find_greedy_solution!(gap::GAP)
-    Ratio = gap.c ./ gap.r
+    Ratio = copy(gap.c) ./ copy(gap.r)
     current_ressources = zeros(gap.m)
     gap.task_assignation .= zeros(Int, gap.t)
 
@@ -70,14 +75,15 @@ end
 
 # Heuristique de solution avec minimisation des ressources
 function find_least_ressources!(gap::GAP)
-    Ratio = gap.r
+    Ratio = copy(gap.r)
     current_ressources = zeros(gap.m)
     gap.task_assignation .= zeros(Int, gap.t)
 
     for task in 1:gap.t
         max_val = maximum(Ratio)
+        worker_visited = 0
 
-        while gap.task_assignation[task] == 0
+        while gap.task_assignation[task] == 0 && worker_visited <= gap.m
             indexes = argmin(Ratio[:, task])
             m_index = indexes[1]
 
@@ -85,10 +91,53 @@ function find_least_ressources!(gap::GAP)
                 gap.task_assignation[task] = m_index
                 current_ressources[m_index] += gap.r[m_index, task]
             else
-                Ratio[m_index, task] = max_val
+                Ratio[m_index, task] = max_val + 1
             end
+            worker_visited += 1
         end
     end
+end
+
+
+
+function find_greedy_worker!(gap::GAP)
+    gap.task_assignation .= zeros(Int, gap.t)
+
+    r = copy(gap.r)
+
+    current_load = fill(0, gap.m)
+    assignment = fill(0, gap.t)
+    cost = 0
+
+    end_condition = fill(100, gap.m, gap.t)
+
+    while r != end_condition
+        # Booléen pour sortir de la boucle si rien ne se passe
+        feasibility = false
+        for i in 1:gap.m
+            # Si la tâche qui nécessite le moins de ressources satisfait la contrainte
+            min = minimum(r[i, :])
+            amin = argmin(r[i, :])
+            if current_load[i] + min <= gap.b[i]
+                feasibility = true
+                # On assigne la nouvelle tâche à l'agent
+                assignment[amin] = i
+                # On augmente sa charge
+                current_load[i] += min
+                # On ajoute le coût associée
+                cost += gap.c[i, amin]
+                # On enlève la tâche des tâches à assigner
+                r[:, amin] .= 100
+            end
+        end
+        if feasibility == false
+            # Pas de solution, on sort de la boucle
+            print("Pas de solution.")
+            break
+        end
+
+    end
+    gap.task_assignation .= assignment
 end
 
 # Opérations sur les voisinages
@@ -155,11 +204,20 @@ function hill_climbing!(gap::GAP)
             neighbour_cost = cost(gap)
             
             # Si le voisin est meilleur, on l'accepte
-            if neighbour_cost > best_cost
-                best_solution = copy(neighbour)
-                best_cost = neighbour_cost
-                improved = true
+            if gap.is_maximisation
+                if neighbour_cost > best_cost
+                    best_solution = copy(neighbour)
+                    best_cost = neighbour_cost
+                    improved = true
+                end
+            else
+                if neighbour_cost < best_cost
+                    best_solution = copy(neighbour)
+                    best_cost = neighbour_cost
+                    improved = true
+                end
             end
+            
         end
 
         # Si aucune amélioration n'est trouvée, on arrête l'algorithme
@@ -176,9 +234,187 @@ function hill_climbing!(gap::GAP)
 end
 
 
+#Meta Génétique
+# Fonction d'évaluation du coût pour un vecteur d'assignation
+function evaluate(gap::GAP, task_assignation::Vector{Int})
+    gap.task_assignation .= task_assignation  # Met à jour l'assignation dans gap pour calculer le coût
+    return cost(gap)
+end
+
+# Fonction pour vérifier la faisabilité d'un vecteur d'assignation
+function is_feasible_assignment(gap::GAP, task_assignation::Vector{Int})
+    gap.task_assignation .= task_assignation  # Met à jour l'assignation dans gap pour vérifier la faisabilité
+    return is_feasible(gap)
+end
+
+# Fonction de sélection (tournoi) pour choisir les meilleurs individus
+function selection(population, gap::GAP, num_parents::Int)
+    sorted_population = sort(population, by=x -> evaluate(gap, x), rev=true)
+    return sorted_population[1:num_parents]
+end
+
+# Fonction de croisement (crossover) pour combiner deux solutions
+function crossover(parent1::Vector{Int}, parent2::Vector{Int})
+    crossover_point = rand(1:length(parent1))
+    child1 = vcat(parent1[1:crossover_point], parent2[crossover_point+1:end])
+    child2 = vcat(parent2[1:crossover_point], parent1[crossover_point+1:end])
+    return child1, child2
+end
+
+# Fonction de mutation pour introduire des modifications aléatoires
+function mutate!(task_assignation::Vector{Int}, gap::GAP, mutation_rate::Float64)
+    for task in 1:length(task_assignation)
+        if rand() < mutation_rate
+            task_assignation[task] = rand(1:gap.m)  # Affecte la tâche à un agent aléatoire
+        end
+    end
+end
+
+# Fonction principale pour l'algorithme génétique
+function genetic_algorithm(gap::GAP, population_size::Int, num_generations::Int, mutation_rate::Float64)
+    # Initialiser la population avec des solutions gloutonnes faisables
+    find_greedy_solution!(gap)
+    population = [copy(gap.task_assignation) for _ in 1:population_size]
+   
+    best_solution = copy(population[1])
+    best_cost = evaluate(gap, best_solution)
+
+    for generation in 1:num_generations
+        # Sélection des meilleurs individus pour reproduction
+        parents = selection(population, gap, population_size ÷ 2)
+        new_population = []
+
+        # Appliquer le croisement sur les paires de parents
+        for i in 1:2:length(parents)-1
+            parent1 = parents[i]
+            parent2 = parents[i+1]
+            child1, child2 = crossover(parent1, parent2)
+            
+            # Mutation des enfants
+            mutate!(child1, gap, mutation_rate)
+            mutate!(child2, gap, mutation_rate)
+            
+            # Vérifier faisabilité des enfants et ajouter à la nouvelle population
+            if is_feasible_assignment(gap, child1)
+                push!(new_population, child1)
+            end
+            if is_feasible_assignment(gap, child2)
+                push!(new_population, child2)
+            end
+        end
+
+        # Remplir la population avec les parents et les enfants
+        population = vcat(parents, new_population)
+
+        # Mettre à jour la meilleure solution trouvée
+        current_best = selection(population, gap, 1)[1]
+        current_best_cost = evaluate(gap, current_best)
+        if gap.is_maximisation
+            if current_best_cost > best_cost
+                best_solution = copy(current_best)
+                best_cost = current_best_cost
+            end
+        else    
+            if current_best_cost < best_cost
+                best_solution = copy(current_best)
+                best_cost = current_best_cost
+            end
+        end
+        
+
+        println("Génération $generation: Meilleur coût = $best_cost")
+    end
+
+    return best_solution, best_cost
+end
+
+
+
+#Méta Tabou
+# Méthode simplifiée de recherche tabou
+function tabu_search!(gap::GAP, max_iters::Int, tabu_tenure::Int)
+    # Initialisation de la meilleure solution et de son coût
+    best_solution = copy(gap.task_assignation)
+    best_cost = cost(gap)
+    current_solution = copy(best_solution)
+    
+    # Liste tabou pour stocker les solutions entières
+    tabu_list = []
+
+    for iter in 1:max_iters
+        neighbours = generate_neighbours(gap)
+        if gap.is_maximisation
+            best_neighbour_cost = -Inf
+        else
+            best_neighbour_cost = Inf
+        end
+        
+        best_neighbour = copy(current_solution)
+
+        # Parcourir chaque voisin
+        for neighbour in neighbours
+            # Vérifier si le voisin est dans la liste tabou
+            if !(neighbour in tabu_list)
+                gap.task_assignation .= neighbour
+                neighbour_cost = cost(gap)
+
+                # Si le voisin est meilleur, on l'enregistre
+                if gap.is_maximisation
+                    if neighbour_cost > best_neighbour_cost
+                        best_neighbour_cost = neighbour_cost
+                        best_neighbour = copy(neighbour)
+                    end
+                else 
+                    if neighbour_cost < best_neighbour_cost
+                        best_neighbour_cost = neighbour_cost
+                        best_neighbour = copy(neighbour)
+                    end   
+                end
+                
+            end
+        end
+
+        # Mise à jour de la solution actuelle avec le meilleur voisin
+        current_solution .= best_neighbour
+
+        # Mettre à jour la meilleure solution si le coût s'améliore
+        if gap.is_maximisation
+            if best_neighbour_cost > best_cost
+                best_cost = best_neighbour_cost
+                best_solution .= best_neighbour
+            end
+        else
+            if best_neighbour_cost < best_cost
+                best_cost = best_neighbour_cost
+                best_solution .= best_neighbour
+            end
+        end
+        
+
+        # Ajouter la solution actuelle à la liste tabou
+        push!(tabu_list, copy(current_solution))
+
+        # Garder seulement les éléments récents dans la liste tabou
+        if length(tabu_list) > tabu_tenure
+            popfirst!(tabu_list)  # Retire la solution la plus ancienne
+        end
+
+        # Affichage de l'état de chaque itération
+        println("Itération $iter: Meilleur coût = $best_cost")
+    end
+
+    # Retourner la meilleure solution trouvée
+    gap.task_assignation .= best_solution
+    return best_solution, best_cost
+end
+
+
+
+
+
 filename = "Instances/gap1.txt"
-id = 3
-gap = GAP(filename, id)
+id = 2
+gap = GAP(filename, id, false)
 
 # Initialiser avec une solution gloutonne
 find_greedy_solution!(gap)
@@ -189,6 +425,12 @@ println("Coût initial : ", cost(gap))
 best_solution, best_cost = hill_climbing!(gap)
 println("Meilleure solution trouvée : ", best_solution)
 println("Coût de la meilleure solution : ", best_cost)
+
+#calcul de solution gloutonne par worker
+find_greedy_worker!(gap)
+println("Solution gloutonne worker : ", gap.task_assignation)
+println("Faisabilité : ", is_feasible(gap))
+println("Coût total : ", cost(gap))
 
 # Calcul d'une solution gloutonne
 find_greedy_solution!(gap)
@@ -201,3 +443,16 @@ find_least_ressources!(gap)
 println("Solution minimisant les ressources : ", gap.task_assignation)
 println("Faisabilité : ", is_feasible(gap))
 println("Coût total : ", cost(gap))
+
+
+population_size = 20
+num_generations = 50
+mutation_rate = 0.1
+
+best_solution, best_cost = genetic_algorithm(gap, population_size, num_generations, mutation_rate)
+println("Meilleure solution trouvée : ", best_solution)
+println("Coût de la meilleure solution : ", best_cost)
+
+# Exécuter la recherche tabou avec la version simplifiée
+tabu_search!(gap, 100, 10)
+println("Recherche Tabou - Meilleure solution : ", gap.task_assignation, " avec coût : ", cost(gap))
