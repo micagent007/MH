@@ -138,13 +138,13 @@ function find_least_ressources_bis!(gap::GAP)
 end
 
 # Opérations sur les voisinages
-function shift_worker!(gap::GAP, task_index::Int, new_worker_index::Int)
+function shift_worker(gap::GAP, task_index::Int, new_worker_index::Int)
     temp_task_assignation = copy(gap.task_assignation)
     temp_task_assignation[task_index] = new_worker_index
     return temp_task_assignation
 end
 
-function swap_tasks!(gap::GAP, first_task_index::Int, second_task_index::Int)
+function swap_tasks(gap::GAP, first_task_index::Int, second_task_index::Int)
     temp_task_assignation = copy(gap.task_assignation)
     first_worker = temp_task_assignation[first_task_index]
     temp_task_assignation[first_task_index] = temp_task_assignation[second_task_index]
@@ -461,7 +461,7 @@ end
 
 
 filename = "Instances/gap1.txt"
-id = 2
+id = 1
 gap = GAP(filename, id, true)
 
 
@@ -474,12 +474,6 @@ println("Coût initial : ", cost(gap))
 best_solution, best_cost = hill_climbing!(gap)
 println("Meilleure solution trouvée : ", best_solution)
 println("Coût de la meilleure solution : ", best_cost)
-
-#calcul de solution gloutonne par worker
-find_greedy_worker!(gap)
-println("Solution gloutonne worker : ", gap.task_assignation)
-println("Faisabilité : ", is_feasible(gap))
-println("Coût total : ", cost(gap))
 
 # Calcul d'une solution gloutonne
 find_greedy_solution!(gap)
