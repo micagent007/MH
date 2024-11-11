@@ -1,7 +1,7 @@
 include("parser.jl")
 
 # Définition de la structure GAP pour le problème d'affectation généralisé
-struct GAP
+mutable struct GAP
     r::Matrix{Int}  # Ressources consommées
     c::Matrix{Int}  # Profits associés
     b::Vector{Int}  # Capacités des agents
@@ -26,20 +26,47 @@ function cost(gap::GAP)
     return total_cost
 end
 
+# # Méthode pour vérifier si une solution est faisable
+# function is_feasible(gap::GAP, task_assignation = gap.task_assignation)
+#     ressources_used = zeros(Int, gap.m)
+
+#     for task in 1:gap.t
+#         worker = task_assignation[task]
+#         # Vérifie si l'assignation est complète
+#         if worker < 1 || worker > gap.m
+#             return false
+#         end
+#         ressources_used[worker] += gap.r[worker, task]
+#     end
+
+#     for worker in 1:gap.m
+#         # Vérifie si l'assignation respecte les contraintes de ressources
+#         if ressources_used[worker] > gap.b[worker]
+#             return false
+#         end
+#     end
+
+#     return true
+# end
+
 # Méthode pour vérifier si une solution est faisable
 function is_feasible(gap::GAP, task_assignation = gap.task_assignation)
     ressources_used = zeros(Int, gap.m)
 
     for task in 1:gap.t
         worker = task_assignation[task]
+        # Vérifie si l'assignation est complète
         if worker < 1 || worker > gap.m
+            println("worker :", worker)
             return false
         end
         ressources_used[worker] += gap.r[worker, task]
     end
 
     for worker in 1:gap.m
+        # Vérifie si l'assignation respecte les contraintes de ressources
         if ressources_used[worker] > gap.b[worker]
+            println("worker :", worker, "max :", gap.b[worker], "valeur :", ressources_used[worker])
             return false
         end
     end
@@ -68,7 +95,7 @@ function find_greedy_solution!(gap::GAP)
     end
 end
 
-# Heuristique de solution avec minimisation des ressources
+# Heuristique de solution avec minimisation des ressources (tâche)
 function find_least_ressources!(gap::GAP)
     Ratio = gap.r
     current_ressources = zeros(gap.m)
@@ -85,9 +112,43 @@ function find_least_ressources!(gap::GAP)
                 gap.task_assignation[task] = m_index
                 current_ressources[m_index] += gap.r[m_index, task]
             else
-                Ratio[m_index, task] = max_val
+                Ratio[m_index, task] = 100 #max_val
             end
         end
+    end
+end
+
+# Variante : Heuristique de solution avec minimisation des ressources (agent)
+function find_least_ressources_bis!(gap::GAP)
+
+    current_ressources = zeros(gap.m)
+
+    r_copy = copy(gap.r)
+    end_condition = fill(100, gap.m, gap.t)
+
+    while gap.r != end_condition
+        # Booléen pour sortir de la boucle si rien ne se passe
+        feasibility = false
+        for i in 1:gap.m
+            # Si la tâche qui nécessite le moins de ressources satisfait la contrainte
+            min = minimum(r_copy[i, :])
+            amin = argmin(r_copy[i, :])
+            if current_ressources[i] + min <= gap.b[i]
+                feasibility = true
+                # On assigne la nouvelle tâche à l'agent
+                gap.task_assignation[amin] = i
+                # On augmente sa charge
+                current_ressources[i] += min
+                # On ajoute le coût associée
+                # On enlève la tâche des tâches à assigner
+                r_copy[:, amin] .= 100
+            end
+        end
+        if feasibility == false
+            # Pas de solution, on sort de la boucle
+            break
+        end
+
     end
 end
 
@@ -175,10 +236,56 @@ function hill_climbing!(gap::GAP)
     return best_solution, best_cost
 end
 
+# include("Neighbours.jl")
+using Random
 
+function recuit(gap, mu, T0, iter_max)
+
+    count = 0
+
+    x_max = deepcopy(gap)
+    x = deepcopy(gap)
+    T = T0
+
+    while T > 1
+        for iter in 1:iter_max
+            i = rand(1:gap.m)
+            j = rand(1:gap.m)
+            while j == i
+                j = rand(1:gap.m)
+            end
+            x_p = deepcopy(x)
+            x_p.task_assignation = swap_tasks!(x, i, j)
+            
+            if is_feasible(x_p)
+                delta = cost(x_p) - cost(x)
+                if delta > 0 # Maximisation (< 0 pour une minimisation)
+                    println("better")
+                    x = deepcopy(x_p)
+                    if cost(x) > cost(x_max)
+                        print("better")
+                        x_max = deepcopy(x)
+                    end
+                else
+                    q = rand()
+                    if q <= exp(-delta/T)
+                        x = deepcopy(x_p)
+                    end
+                end
+            end
+        end
+        T = mu * T
+        count += 1
+        println(T)
+    end
+    return x_max
+end
+
+#=
 filename = "Instances/gap1.txt"
 id = 3
 gap = GAP(filename, id)
+
 
 # Initialiser avec une solution gloutonne
 find_greedy_solution!(gap)
@@ -201,3 +308,4 @@ find_least_ressources!(gap)
 println("Solution minimisant les ressources : ", gap.task_assignation)
 println("Faisabilité : ", is_feasible(gap))
 println("Coût total : ", cost(gap))
+=#
