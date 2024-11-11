@@ -432,10 +432,18 @@ function recuit(gap, mu, T0, iter_max)
                 delta = cost(x_p) - cost(x)
                 if delta > 0 # Maximisation (< 0 pour une minimisation) -> améliore la solution courante
                     x = deepcopy(x_p)
-                    if cost(x) > cost(x_max) # Améliore la solution optimale
-                        print("better")
-                        x_max = deepcopy(x)
+                    if gap.is_maximisation
+                        if cost(x) > cost(x_max) # Améliore la solution optimale
+                            print("better")
+                            x_max = deepcopy(x)
+                        end
+                    else
+                        if cost(x) < cost(x_max) # Améliore la solution optimale
+                            print("better")
+                            x_max = deepcopy(x)
+                        end 
                     end
+                    
                 else
                     q = rand()
                     if q <= exp(-delta/T)
@@ -454,7 +462,7 @@ end
 
 filename = "Instances/gap1.txt"
 id = 2
-gap = GAP(filename, id, false)
+gap = GAP(filename, id, true)
 
 
 # Initialiser avec une solution gloutonne
