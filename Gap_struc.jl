@@ -460,11 +460,11 @@ function recuit(gap, mu, T0, iter_max)
 end
 
 
-filename = "Instances/gap1.txt"
+filename = "Instances/gap5.txt"
 id = 1
 gap = GAP(filename, id, true)
 
-
+#=
 # Initialiser avec une solution gloutonne
 find_greedy_solution!(gap)
 println("Solution initiale : ", gap.task_assignation)
@@ -497,5 +497,6 @@ println("Meilleure solution trouvée : ", best_solution)
 println("Coût de la meilleure solution : ", best_cost)
 
 # Exécuter la recherche tabou avec la version simplifiée
-tabu_search!(gap, 100, 10)
+tabu_search!(gap, 20, 5)
 println("Recherche Tabou - Meilleure solution : ", gap.task_assignation, " avec coût : ", cost(gap))
+=#
