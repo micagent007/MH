@@ -163,7 +163,7 @@ function generate_neighbours(gap::GAP)
         # Générer un voisin en déplaçant la tâche vers un autre agent
         for new_worker in 1:gap.m
             if new_worker != current_worker
-                neighbour = shift_worker!(gap, task, new_worker)
+                neighbour = shift_worker(gap, task, new_worker)
                 if is_feasible(gap, neighbour)
                     push!(neighbours, neighbour)
                 end
@@ -174,7 +174,7 @@ function generate_neighbours(gap::GAP)
     # Optionnel : ajouter des voisins avec des échanges de tâches
     for task1 in 1:gap.t
         for task2 in task1+1:gap.t
-            neighbour = swap_tasks!(gap, task1, task2)
+            neighbour = swap_tasks(gap, task1, task2)
             if is_feasible(gap, neighbour)
                 push!(neighbours, neighbour)
             end
@@ -332,6 +332,7 @@ end
 #Méta Tabou
 # Méthode simplifiée de recherche tabou
 function tabu_search!(gap::GAP, max_iters::Int, tabu_tenure::Int)
+    find_greedy_solution!(gap)
     # Initialisation de la meilleure solution et de son coût
     best_solution = copy(gap.task_assignation)
     best_cost = cost(gap)
@@ -427,7 +428,7 @@ function recuit(gap, mu, T0, iter_max)
                 j = rand(1:gap.m)
             end
             x_p = deepcopy(x)
-            x_p.task_assignation = swap_tasks!(x, i, j)
+            x_p.task_assignation = swap_tasks(x, i, j)
             if is_feasible(x_p)
                 delta = cost(x_p) - cost(x)
                 if delta > 0 # Maximisation (< 0 pour une minimisation) -> améliore la solution courante
