@@ -187,6 +187,7 @@ end
 # Méthode de montée (hill climbing) pour améliorer la solution
 function hill_climbing!(gap::GAP)
     # Initialiser avec une solution faisable
+    find_greedy_solution!(gap)
     best_solution = copy(gap.task_assignation)
     best_cost = cost(gap)
 
@@ -465,39 +466,41 @@ filename = "Instances/gap5.txt"
 id = 1
 gap = GAP(filename, id, true)
 
-#=
-# Initialiser avec une solution gloutonne
+
+# calcul d'une solution gloutonne
 find_greedy_solution!(gap)
-println("Solution initiale : ", gap.task_assignation)
-println("Coût initial : ", cost(gap))
+println("Solution gloutonne par tâche: ", gap.task_assignation)
+println("Coût solution gloutonne par tâche : ", cost(gap))
+
+println("////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
 
 # Exécuter l'algorithme de montée
 best_solution, best_cost = hill_climbing!(gap)
-println("Meilleure solution trouvée : ", best_solution)
-println("Coût de la meilleure solution : ", best_cost)
+println("Meilleure solution trouvée avec la montée de voisinage : ", best_solution)
+println("Coût de la meilleure solution trouvée avec la montée de voisinage : ", best_cost)
 
-# Calcul d'une solution gloutonne
-find_greedy_solution!(gap)
-println("Solution gloutonne : ", gap.task_assignation)
-println("Faisabilité : ", is_feasible(gap))
-println("Coût total : ", cost(gap))
+println("////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
 
 # Calcul d'une solution avec minimisation des ressources
 find_least_ressources!(gap)
 println("Solution minimisant les ressources : ", gap.task_assignation)
 println("Faisabilité : ", is_feasible(gap))
-println("Coût total : ", cost(gap))
+println("Coût total de cette solution : ", cost(gap))
 
+println("////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
 
 population_size = 20
 num_generations = 50
 mutation_rate = 0.1
 
 best_solution, best_cost = genetic_algorithm(gap, population_size, num_generations, mutation_rate)
-println("Meilleure solution trouvée : ", best_solution)
+println("Meilleure solution trouvée par un algorithme génétique : ", best_solution)
 println("Coût de la meilleure solution : ", best_cost)
+
+println("////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
 
 # Exécuter la recherche tabou avec la version simplifiée
 tabu_search!(gap, 20, 5)
 println("Recherche Tabou - Meilleure solution : ", gap.task_assignation, " avec coût : ", cost(gap))
-=#
+
+println("////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
