@@ -13,7 +13,7 @@ function create_csv(folder="Instances/")
         nb_instances = parse(Int, readline(path))
         for instance in 0:nb_instances-1
 
-            gap = GAP(path, instance, true)
+            gap = GAP(path, instance, true, false)
 
             # Ajouter les heuristiques à comparer
 
@@ -49,7 +49,7 @@ function create_csv_recuit(folder="Instances/")
         nb_instances = parse(Int, readline(path))
         for instance in 0:nb_instances-1
 
-            gap = GAP(path, instance, true)
+            gap = GAP(path, instance, true, false)
 
             # Greedy solution
             find_greedy_solution!(gap)
@@ -77,7 +77,7 @@ function create_csv_climb(folder="Instances/")
         nb_instances = parse(Int, readline(path))
         for instance in 0:nb_instances-1
 
-            gap = GAP(path, instance, true)
+            gap = GAP(path, instance, true, false)
 
             # Greedy solution
             find_greedy_solution!(gap)
@@ -105,7 +105,7 @@ function create_csv_tabu(folder="Instances/")
         nb_instances = parse(Int, readline(path))
         for instance in 0:nb_instances-1
 
-            gap = GAP(path, instance, true)
+            gap = GAP(path, instance, true, false)
             best_solution_20_3, tabu_20_3 = tabu_search!(gap, 20, 3)
             best_solution_20_5, tabu__20_5 = tabu_search!(gap, 20, 5)
             best_solution_20_10, tabu_20_10 = tabu_search!(gap, 20, 10)
@@ -131,7 +131,7 @@ function create_csv_genetic(folder="Instances/")
         nb_instances = parse(Int, readline(path))
         for instance in 0:nb_instances-1
 
-            gap = GAP(path, instance, true)
+            gap = GAP(path, instance, true, false)
             population_size = 20
             num_generations = 50
             mutation_rate = 0.1
@@ -145,3 +145,36 @@ function create_csv_genetic(folder="Instances/")
     end
     CSV.write("output_csv_genetic", df)
 end
+
+function create_csv_genetic_tabu(folder="Instances/")
+    files = readdir(folder)
+    df = DataFrame(id = Int[], file = String[], instance = Int[], tabu = Int[], genetic = []) # Ajouter les heuristiques à comparer
+    id = 0
+
+    for file in files
+        path = folder*file # Ajuster le path
+        nb_instances = parse(Int, readline(path))
+        for instance in 0:nb_instances-1
+
+            gap = GAP(path, instance, true, false)
+
+            # Greedy solution
+            find_greedy_solution!(gap)
+            population_size = 20
+            num_generations = 50
+            mutation_rate = 0.1
+            best_solution_genetic, best_cost_genetic = genetic_algorithm(gap, population_size, num_generations, mutation_rate)
+
+            # tabu
+            find_greedy_solution!(gap)
+            best_solution_tabu, best_cost_tabu = tabu_search!(gap, 20, 5)
+
+            push!(df, (id, path, instance, best_cost_genetic, best_cost_tabu)) # Ajouter les heuristiques à comparer
+            println(id)
+            id += 1
+        end
+    end
+    CSV.write("output_csv_genetic_tabu.csv", df)
+end
+
+create_csv_genetic_tabu()

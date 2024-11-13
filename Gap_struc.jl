@@ -1,4 +1,5 @@
 include("parser.jl")
+using Random
 
 # Définition de la structure GAP pour le problème d'affectation généralisé
 mutable struct GAP
@@ -9,12 +10,13 @@ mutable struct GAP
     t::Int          # Nombre de tâches
     task_assignation::Vector{Int}  # Assignation des tâches (solution courante)
     is_maximisation::Bool
+    is_verbose::Bool
 
     # Constructeur personnalisé pour charger les données à partir d'un fichier
-    function GAP(filename::String, id::Int, is_maximization::Bool)
+    function GAP(filename::String, id::Int, is_maximization::Bool, is_verbose::Bool)
         r, c, b, m, t = readfile(filename, id)
         task_assignation = zeros(Int, t)
-        new(r, c, b, m, t, task_assignation, is_maximization)
+        new(r, c, b, m, t, task_assignation, is_maximization, is_verbose)
     end
 end
 
@@ -187,7 +189,7 @@ end
 # Méthode de montée (hill climbing) pour améliorer la solution
 function hill_climbing!(gap::GAP)
     # Initialiser avec une solution faisable
-    find_greedy_solution!(gap)
+    #find_greedy_solution!(gap)
     best_solution = copy(gap.task_assignation)
     best_cost = cost(gap)
 
@@ -218,21 +220,23 @@ function hill_climbing!(gap::GAP)
             
         end
 
+        # Mise à jour de la meilleure solution courante
+        gap.task_assignation .= best_solution
+        if gap.is_verbose
+            println("hill climbing, solution courante : ", best_solution, " de coût : ", best_cost)
+        end
+
         # Si aucune amélioration n'est trouvée, on arrête l'algorithme
         if !improved
             break
         end
-
-        # Mise à jour de la meilleure solution courante
-        gap.task_assignation .= best_solution
+        
     end
 
     # Retourner la meilleure solution trouvée
-    return best_solution, best_cost
+    return gap.task_assignation, cost(gap)
 end
 
-# include("Neighbours.jl")
-using Random
 
 #Meta Génétique
 # Fonction d'évaluation du coût pour un vecteur d'assignation
@@ -273,7 +277,7 @@ end
 # Fonction principale pour l'algorithme génétique
 function genetic_algorithm(gap::GAP, population_size::Int, num_generations::Int, mutation_rate::Float64)
     # Initialiser la population avec des solutions gloutonnes faisables
-    find_greedy_solution!(gap)
+    #find_greedy_solution!(gap)
     population = [copy(gap.task_assignation) for _ in 1:population_size]
    
     best_solution = copy(population[1])
@@ -321,8 +325,10 @@ function genetic_algorithm(gap::GAP, population_size::Int, num_generations::Int,
             end
         end
         
-
-        println("Génération $generation: Meilleur coût = $best_cost")
+        if gap.is_verbose
+            println("Génération $generation: Meilleur coût = $best_cost , de solution $best_solution")
+        end
+        
     end
 
     return best_solution, best_cost
@@ -333,7 +339,7 @@ end
 #Méta Tabou
 # Méthode simplifiée de recherche tabou
 function tabu_search!(gap::GAP, max_iters::Int, tabu_tenure::Int)
-    find_greedy_solution!(gap)
+    #find_greedy_solution!(gap)
     # Initialisation de la meilleure solution et de son coût
     best_solution = copy(gap.task_assignation)
     best_cost = cost(gap)
@@ -401,7 +407,10 @@ function tabu_search!(gap::GAP, max_iters::Int, tabu_tenure::Int)
         end
 
         # Affichage de l'état de chaque itération
-        println("Itération $iter: Meilleur coût = $best_cost")
+        if gap.is_verbose
+            println("Itération numéro $iter, coût de la meilleure solution courante : $best_neighbour_cost, de solution assignée : $best_neighbour")
+        end
+        
     end
 
     # Retourner la meilleure solution trouvée
@@ -453,15 +462,19 @@ function recuit(gap, mu, T0, iter_max)
                     end
                 end
             end
+
+        end
+        if gap.is_verbose
+            println("Itération numéro $count, coût de la meilleure solution courante :", cost(x_max),", de solution assignée : ", x_max.task_assignation)
         end
         T = mu * T
         count += 1
-        println(T)
+        #println(T)
     end
     return x_max
 end
 
-
+#=
 filename = "Instances/gap5.txt"
 id = 1
 gap = GAP(filename, id, true)
@@ -504,3 +517,4 @@ tabu_search!(gap, 20, 5)
 println("Recherche Tabou - Meilleure solution : ", gap.task_assignation, " avec coût : ", cost(gap))
 
 println("////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
+=#
